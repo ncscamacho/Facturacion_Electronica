@@ -10,6 +10,7 @@ import com.pandatech.bean.IdentificacionEmisor;
 import com.pandatech.bean.IdentificacionReceptor;
 import com.pandatech.bean.Recepcion;
 import com.pandatech.bean.Validacion;
+import com.sun.xml.internal.ws.util.StringUtils;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -64,6 +65,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+
 import java.util.Enumeration;
 import java.util.Scanner;
 import javax.xml.bind.Element;
@@ -73,6 +75,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import jdk.internal.org.xml.sax.XMLReader;
+import org.apache.commons.io.FileUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -108,6 +111,8 @@ public class Logica extends HttpServlet  {
     private static  String XML = "";
     private static  String XML_firmado = "";
     
+    private String extracto;
+    private String xmlBase64;
     Recepcion recepcion = new Recepcion();
     String archivoxml = null;
 
@@ -195,6 +200,7 @@ public class Logica extends HttpServlet  {
     
     //Realiza el proceso en tiempo de ejecucion java -jar sobre el compilado jar para realizar la firma del archivo xml
     //Se utiliza 4 parametros para ejecutar el jar de firmado
+    
     Process cat = Runtime.getRuntime().exec("java -jar C:/Users/PCPTUser/Desktop/FirmaXadesEpes-master/compilado/firmar-xades.jar C:/Users/PCPTUser/Desktop/FirmaXadesEpes-master/llavecriptografica_310168440106.p12 8888 C:/Users/PCPTUser/Desktop/FirmaXadesEpes-master/recursos/demo-factura.xml C:/Users/PCPTUser/Desktop/Facturacion/Facturacion_Electronica/src/main/resources/archivos/recursos/factura_firmada.xml");  
        
     
@@ -204,7 +210,18 @@ public class Logica extends HttpServlet  {
       
         //Lee el xml firmado en la ruta indicada
         String content = readFile("C:\\Users\\PCPTUser\\Desktop\\Facturacion\\Facturacion_Electronica\\src\\main\\resources\\archivos\\recursos\\factura_firmada.xml", StandardCharsets.UTF_8);
-        System.out.println(content);
+        System.out.println( "XML Firmado" + content);
+        
+            //se debe encontrar en numero de clave en el xml
+         extracto = content.toString();
+         extracto = content.substring(269, 319);
+         System.out.println( " extracto clave " + extracto);
+        
+         //se convierte el resultado del xml firmado en base 64
+        Conversion codificar = new Conversion();
+        xmlBase64 = codificar.encode(content);
+        System.out.println(" XML BASE 64 " + xmlBase64);
+        
         
         
         
@@ -213,7 +230,7 @@ public class Logica extends HttpServlet  {
         autenticar();
         creacionObjetoJson();
         enviarDocumento();
-        validacionEstado();
+        //validacionEstado();
         desconexion();
 
         Gson gson = new Gson();
@@ -228,28 +245,6 @@ public class Logica extends HttpServlet  {
         return new String(encoded, encoding);
     }
     
-    
-    
-   
-    
-    
-    
-    
-    
-    
-    
-    
-    
-             
-             
-             
-             
-                
-                
-                
-
-        
-
     public void autenticar() {
         Client client = ClientBuilder.newClient();
         WebTarget target = client.target(IDP_URI + "/token");
@@ -280,7 +275,9 @@ public class Logica extends HttpServlet  {
 
     public void creacionObjetoJson() {
         //Se creó un objeto recepcion global
-        recepcion.setClave("506" + "010118" + "003101684401" + "0000000000000000013" + "1" + "999999999");
+        //recepcion.setClave("506" + "010118" + "003101684401" + "0000000000000000013" + "1" + "999999999");
+        recepcion.setClave(extracto);
+        
         //System.out.println(recepcion.getClave());
         recepcion.setFecha();
 
@@ -296,8 +293,11 @@ public class Logica extends HttpServlet  {
         receptor.setNumeroIdentificacion("3101684401");
         recepcion.setIdentificacionReceptor(receptor);
 
-        recepcion.setComprobanteXml("PD94bWwgdmVyc2lvbj0iMS4wIiA/Pg0KDQo8ZG9tYWluIHhtbG5zPSJ1cm46amJvc3M6ZG9tYWluOjQuMCI+DQogICAgPGV4dGVuc2lvbnM+DQogICAgICAgIDxleHRlbnNpb24gbW9kdWxlPSJvcmcuamJvc3MuYXMuY2x1c3RlcmluZy5pbmZpbmlzcGFuIi8+DQogICAgICAgIDxleHRlbnNpb24gbW9kdWxlPSJvcmcuamJvc3MuYXMuY2x1c3RlcmluZy5qZ3JvdXBzIi8+DQogICAgICAgIDxleHRlbnNpb24gbW9kdWxlPSJvcmcuamJvc3MuYXMuY29ubmVjdG9yIi8+DQogICAgICAgIDxleHRlbnNpb24gbW");
-
+     // recepcion.setComprobanteXml("PD94bWwgdmVyc2lvbj0iMS4wIiA/Pg0KDQo8ZG9tYWluIHhtbG5zPSJ1cm46amJvc3M6ZG9tYWluOjQuMCI+DQogICAgPGV4dGVuc2lvbnM+DQogICAgICAgIDxleHRlbnNpb24gbW9kdWxlPSJvcmcuamJvc3MuYXMuY2x1c3RlcmluZy5pbmZpbmlzcGFuIi8+DQogICAgICAgIDxleHRlbnNpb24gbW9kdWxlPSJvcmcuamJvc3MuYXMuY2x1c3RlcmluZy5qZ3JvdXBzIi8+DQogICAgICAgIDxleHRlbnNpb24gbW9kdWxlPSJvcmcuamJvc3MuYXMuY29ubmVjdG9yIi8+DQogICAgICAgIDxleHRlbnNpb24gbW");
+        recepcion.setComprobanteXml(xmlBase64);
+        
+        
+        
         /*
         System.out.println(recepcion.getClave());
         System.out.println(recepcion.getFecha());
@@ -389,13 +389,13 @@ public class Logica extends HttpServlet  {
                      */
                     Conversion decodificar = new Conversion();
                     archivoxml = decodificar.decode(json.getRespuestaXml());
-                    //System.out.println(archivoxml);
+                    System.out.println(archivoxml);
 
                     //Creación y Respuesta si se crea o no el comprobante de recepción de hacienda
-                    System.out.println(comprobanteXml());
+                    //System.out.println(comprobanteXml());
                     
                     //Ejecucion de metodo para enviar xml por correo
-                    System.out.println(envioCorreo("emmanuel.guzman@pandatechla.com", "","emmanuel.guzman@pandatechla.com"));
+                    //System.out.println(envioCorreo("emmanuel.guzman@pandatechla.com", "","emmanuel.guzman@pandatechla.com"));
 
                 } catch (Exception e) {
                     System.out.println(e);
